@@ -97,45 +97,41 @@ if st.button("Schadensmeldung absenden", type="primary"):
             temp_file.write(uploaded_file.getvalue())
             image_path = temp_file.name
 
-        try:
-            with st.spinner("Deine Meldung wird analysiert ..."):
-                result = process_report(
-                    image_path,
-                    description,
-                    location
-                )
 
-            
-            validation = result.get("validation")
+    try:
+        with st.spinner("Deine Meldung wird analysiert ..."):
+            result = process_report(image_path, description, location)
 
-            if validation and validation["status"] == "INVALID":
-                st.warning(
-                    "Der gemeldete Schaden konnte anhand "
-                    "des Fotos nicht bestätigt werden."
-                )
-                st.write(validation["reason"])
-                st.stop()
+        validation = result.get("validation")
+        status = validation.get("status") if validation else "UNCERTAIN"
 
-            elif validation and validation["status"] == "UNCERTAIN":
-                st.info(
-                    "Das Foto reicht für eine eindeutige "
-                    "Prüfung nicht aus. Bitte ergänze "
-                    "deine Meldung."
-                )
-                st.write(validation["reason"])
-                st.stop()
+        if status == "INVALID":
+            st.error("❌ Meldung nicht zur Weiterleitung freigegeben")
+            st.write("Kein gültiger kommunaler Schaden bestätigt.")
+            st.write("**Begründung:**", validation.get("reason", ""))
 
-            else:
-                st.success("Deine Meldung wurde analysiert!")
+        elif status == "UNCERTAIN":
+            st.warning("⚠️ Weitere Informationen erforderlich")
+            st.write("Bitte ergänze deine Meldung oder lade ein besseres Foto hoch.")
+            if validation:
+                st.write("**Begründung:**", validation.get("reason", ""))
 
+        elif status == "VALID":
+            st.success("✅ Meldung erfolgreich geprüft")
+            st.write(
+                "Ein meldefähiges Problem wurde erkannt. "
+                "Eine Weiterleitung ist erst nach weiteren Prüfungen möglich."
+            )
             st.write("**Schadensbeschreibung:**", description)
             st.write("**Standort:**", location)
             st.write("**Deine Dringlichkeit:**", citizen_urgency, "/ 5")
 
-            # AI priority is intentionally not shown to citizens.
-            # Later, the result will be stored for the admin dashboard.
+        else:
+            st.warning("Unbekanntes Prüfergebnis. Keine Weiterleitung.")
 
-        except Exception as e:
-            st.error(f"Fehler bei der Analyse: {e}")
-        finally:
-            Path(image_path).unlink(missing_ok=True)
+    except Exception as e:
+        st.error(f"Fehler bei der Analyse: {e}")
+
+    finally:
+        Path(image_path).unlink(missing_ok=True)
+

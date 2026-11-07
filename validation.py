@@ -40,9 +40,40 @@ def validate_report(image_path, description):
     Even though the pothole is a real problem,
     it does not support the claim about needles.
 
+    
     5. VALID:
-       The specific reported problem is clearly
-       supported by the image.
+   Return VALID ONLY if ALL of the following
+   conditions are satisfied:
+
+   A. The image clearly supports the citizen's
+      specific description.
+
+   B. The image shows an actual defect, damage,
+      obstruction, contamination, or concrete
+      safety concern.
+
+   C. The issue is potentially relevant to
+      public infrastructure or municipal services.
+
+   IMPORTANT:
+   Matching the image and description is NOT
+   sufficient to return VALID.
+
+   Examples:
+   - Cat sitting peacefully in a basket:
+     INVALID, even if the description says
+     "Cat sitting in a basket".
+   - Ordinary decoration in a shopping mall:
+     INVALID if no actual hazard is visible.
+   - Large pothole on a public road:
+     VALID if the description matches.
+   - Unclear potentially dangerous object:
+     UNCERTAIN.
+
+   If the image and description match but
+   no concrete reportable problem exists,
+   return INVALID.
+
 
     6. INVALID:
        The specific reported problem is not
@@ -64,6 +95,48 @@ def validate_report(image_path, description):
     status: VALID, INVALID, or UNCERTAIN
     reason: explanation in German
     detected_problem: what is actually visible
+
+
+ADDITIONAL REPORTABILITY CHECK:
+
+Before marking a report as VALID, also verify whether
+the image shows a genuine, reportable public issue.
+
+10. A visible object alone is NOT proof of a hazard.
+    Check whether there is an actual defect, obstruction,
+    damage, contamination, or concrete safety concern.
+
+11. Do NOT classify ordinary objects, decorations,
+    artwork, advertisements, or harmless everyday
+    situations as hazards without visible evidence
+    of a real problem.
+
+12. If the image clearly shows no actual problem,
+    return INVALID.
+    Explain in German that no reportable issue
+    could be identified.
+
+13. If a potentially dangerous situation cannot
+    be reliably distinguished from a harmless object
+    or decoration, return UNCERTAIN.
+    Do not automatically reject a possible hazard.
+
+14. Consider whether the issue is generally relevant
+    to public infrastructure or municipal services,
+    such as roads, sidewalks, streetlights,
+    public waste, or public safety.
+
+15. A problem inside a private shop or shopping mall
+    may be the responsibility of the property operator.
+    If responsibility cannot be established from the
+    image alone, return UNCERTAIN rather than guessing.
+
+16. Return VALID only when the specific citizen claim
+    is supported by the image AND a concrete reportable
+    problem is identifiable.
+
+17. Never invent a hazard, damage, or responsibility
+    that cannot be established from the evidence.
     """
 
 
