@@ -5,6 +5,11 @@ from streamlit_geolocation import streamlit_geolocation
 import streamlit as st
 from pathlib import Path
 import tempfile
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+DEMO_MODE = os.getenv("DEMO_MODE", "false").lower() == "true"
 
 from report_pipeline import process_report
 
@@ -18,6 +23,10 @@ st.title("🏙️ FixMyCity AI")
 st.write("Melde Schäden und Gefahren in deiner Stadt.")
 
 st.subheader("Neue Schadensmeldung")
+if DEMO_MODE:
+    st.info("🧪 Demo-Modus aktiv: Bilder hochladen und Standorte testen erlaubt.")
+else:
+    st.info("🔒 Bürger-Modus: Standortfreigabe und Live-Foto erforderlich.")
 
 uploaded_file = st.file_uploader(
     "Foto des Schadens hochladen",
