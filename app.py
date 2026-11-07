@@ -28,10 +28,15 @@ if DEMO_MODE:
 else:
     st.info("🔒 Bürger-Modus: Standortfreigabe und Live-Foto erforderlich.")
 
-uploaded_file = st.file_uploader(
-    "Foto des Schadens hochladen",
-    type=["jpg", "jpeg", "png"]
-)
+if DEMO_MODE:
+    uploaded_file = st.file_uploader(
+        "🧪 Testbild vom MacBook hochladen",
+        type=["jpg", "jpeg", "png"]
+    )
+else:
+    uploaded_file = st.camera_input(
+        "📸 Fotografiere den Schaden direkt vor Ort"
+    )
 
 description = st.text_area(
     "Beschreibe das Problem",
