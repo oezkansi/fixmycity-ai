@@ -1,6 +1,7 @@
 from validation import validate_report
 from ai_analysis import analyze_report
 from ai_priority import analyze_priority
+from location_validation import check_location_responsibility
 
 def process_report(image_path, description, location):
     full_description = (
@@ -28,6 +29,17 @@ def process_report(image_path, description, location):
         image_path, full_description
     )
 
+    print("\n2. KI prüft die Zuständigkeit ...")
+
+    responsibility = check_location_responsibility(
+        location,
+        description,
+        image_analysis
+    )
+    
+    print("ZUSTÄNDIGKEITSERGEBNIS:", responsibility)
+
+
     print("\n2. KI bewertet die Risiken ...")
 
     factors, priority = analyze_priority(
@@ -37,6 +49,8 @@ def process_report(image_path, description, location):
     return {
         "location": location,
         "description": description,
+        "validation": validation,
+        "responsibility": responsibility,
         "image_analysis": image_analysis,
         "risk_factors": factors,
         "priority": priority
