@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="color-scheme" content="light">
+<style>html, body { margin: 0; padding: 0; background: transparent; height: 0; overflow: hidden; }</style>
+</head>
+<body>
+<script>
+// Unsichtbare Komponente: ermittelt den Standort, sobald Python sie anfordert.
+const send = (type, data) => window.parent.postMessage(Object.assign({ isStreamlitMessage: true, type: "streamlit:" + type }, data || {}), "*");
+let started = false;
+
+async function reverse(lat, lon) {
+  try {
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 4000);
+    const r = await fetch("https://nominatim.openstreetmap.org/reverse?format=jsonv2&accept-language=de&zoom=18&lat=" + lat + "&lon=" + lon, { signal: ctrl.signal });
+    clearTimeout(t);
+    const a = (await r.json()).address || {};
+    const street = [a.road, a.house_number].filter(Boolean).join(" ");
+    const city = [a.postcode, a.city || a.town || a.village || a.municipality].filter(Boolean).join(" ");
+    return [street, city].filter(Boolean).join(", ") || null;
+  } catch (e) { return null; }
+}
+
+function done(value) { send("setComponentValue", { value: value, dataType: "json" }); }
+
+function locate() {
+  if (!navigator.geolocation) { done({ error: "unsupported" }); return; }
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude, lon = pos.coords.longitude;
+    done({ lat: lat, lon: lon, accuracy: pos.coords.accuracy, address: await reverse(lat, lon) });
+  }, (err) => done({ error: (err && err.message) || "error" }),
+  { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 });
+}
+
+window.addEventListener("message", (e) => {
+  if (!e.data || e.data.type !== "streamlit:render") return;
+  if (!started && (e.data.args || {}).request) { started = true; locate(); }
+});
+send("componentReady", { apiVersion: 1 });
+send("setFrameHeight", { height: 0 });
+</script>
+</body>
+</html>
