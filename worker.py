@@ -2,23 +2,41 @@
 import time
 import sqlite3
 from datetime import datetime
+import os
 
 DB_NAME = "fixmycity.db"
 
 def background_task_loop():
     """
-    Ein Hintergrund-Skript, das periodisch (z.B. alle 5 Minuten) läuft,
-    die Datenbank prüft und kritische Statusänderungen vornimmt.
+    Hintergrund-Skript zur periodischen Prüfung der Datenbank.
+    Prüft, ob die Tabelle existiert und aktualisiert ggf. überfällige Tickets.
     """
     print("🤖 FixMyCity Hintergrund-Worker gestartet...")
     
     while True:
         try:
+            if not os.path.exists(DB_NAME):
+                print("⏳ Keine Datenbank gefunden. Warte auf erste Schadensmeldung...")
+                time.sleep(30)
+                continue
+
             conn = sqlite3.connect(DB_NAME)
             cursor = conn.cursor()
             
-            # Beispiel: Prüfen, ob Tickets länger als 7 Tage unbehandelt sind
-            # und automatisch den Status oder die Dringlichkeit anpassen
+            # Prüfen, ob die Tabelle 'reports' überhaupt existiert
+            cursor.execute("""
+                SELECT name FROM sqlite_master 
+                WHERE type='table' AND name='reports';
+            """)
+            table_exists = cursor.fetchone()
+            
+            if not table_exists:
+                print("⏳ Tabelle 'reports' existiert noch nicht. Warte auf erste Meldung...")
+                conn.close()
+                time.sleep(30)
+                continue
+
+            # Aktive Tickets abrufen
             cursor.execute("""
                 SELECT id, created_at, score FROM reports 
                 WHERE status = 'Aktiv'
@@ -28,10 +46,14 @@ def background_task_loop():
             now = datetime.now()
             for row in rows:
                 report_id, created_at_str, score = row
-                created_at = datetime.strptime(created_at_str, "%Y-%m-%d %H:%M:%S")
+                try:
+                    created_at = datetime.strptime(created_at_str, "%Y-%m-%d %H:%M:%S")
+                except ValueError:
+                    continue
+                
                 days_waiting = (now - created_at).days
                 
-                # Wenn ein Ticket z.B. nach 10 Tagen noch nicht gelöst ist, Score erhöhen
+                # Score bei langer Wartezeit erhöhen
                 if days_waiting >= 10:
                     new_score = score + 5.0
                     cursor.execute("""
@@ -40,12 +62,12 @@ def background_task_loop():
             
             conn.commit()
             conn.close()
-            print(f"[{now.strftime('%H:%M:%S')}] Hintergrund-Check abgeschlossen. Alle aktiven Tickets geprüft.")
+            print(f"[{now.strftime('%H:%M:%S')}] Hintergrund-Check abgeschlossen. Aktive Tickets geprüft.")
             
         except Exception as e:
             print(f"Fehler im Hintergrund-Worker: {e}")
             
-        # 5 Minuten (300 Sekunden) warten bis zum nächsten Intervall
+        # 5 Minuten warten
         time.sleep(300)
 
 if __name__ == "__main__":
