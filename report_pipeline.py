@@ -1,52 +1,57 @@
-# report_pipeline.py
+# pipeline.py
 from validation import validate_report
 from categorization import categorize_report, CATEGORIES_DB
 from prioritization import calculate_advanced_priority
 from prognosis import calculate_prognosis
+from database import check_for_duplicates, save_report
+from datetime import datetime
 
-def process_report(image_path, description, location, district="Bezirk_Mitte", is_main_road=False, citizen_urgency=3, days_waiting=0):
+def process_and_save_report(image_path, description, location, district="Bezirk_Mitte", is_main_road=False, citizen_urgency=3, days_waiting=0):
     """
-    Führt die vollständige Validierung, KI-Klassifizierung, Priorisierung 
-    und standortbezogene Schadensprognose für einen eingereichten Schaden durch.
+    Führt die vollständige FixMyCity-Pipeline aus:
+    1. Validierung (Bild + Text via Gemini)
+    2. Duplikatsprüfung am Standort
+    3. Klassifizierung (Kategorie, Subkategorie, Abteilung)
+    4. Priorisierung (Inkl. Wetterfaktor & transparentem Breakdown)
+    5. Prognose-Berechnung
+    6. Speicherung in der SQLite-Datenbank (inkl. Timestamp)
     """
-    # 1. Bild- und Textvalidierung
+    
+    # 1. Validierung: Prüfen, ob Bild und Beschreibung zusammenpassen und ein Schaden vorliegt
     validation = validate_report(image_path, description)
-    print(f"VALIDIERUNGSERGEBNIS: {validation}", flush=True)
-
-    if validation["status"] != "VALID":
+    if validation.get("status") != "VALID":
         return {
-            "location": location,
-            "description": description,
-            "validation": validation,
-            "category_data": None,
-            "priority_data": None,
-            "prognosis_data": None
+            "success": False,
+            "error": f"Meldung abgelehnt: {validation.get('reason', 'Ungültiges Bild oder Beschreibung.')}"
         }
 
-    print("\n1. KI klassifiziert den Schaden anhand der JSON-Datenbank ...")
-    # 2. Präzise Kategorisierung über die JSON-Struktur
+    # 2. KI-Klassifizierung des Schadens
     cat_result = categorize_report(image_path, description)
     category = cat_result.get("category")
     subcategory = cat_result.get("subcategory")
-    department = cat_result.get("department")
 
-    # Subkategorien-Details auslesen
     sub_data = {}
     if category in CATEGORIES_DB and subcategory in CATEGORIES_DB[category]["subcategories"]:
         sub_data = CATEGORIES_DB[category]["subcategories"][subcategory]
 
-    print(f"Kategorie erkannt: {category} -> {subcategory} (Abteilung: {department})")
+    # 3. Duplikatsprüfung: Verhindern von Mehrfachmeldungen im selben Umkreis
+    is_dup, existing_id = check_for_duplicates(location, category, subcategory)
+    if is_dup:
+        return {
+            "success": False,
+            "error": f"Ähnlicher aktiver Schaden (ID: {existing_id}) existiert bereits an diesem Standort. Meldung wurde als Duplikat abgewiesen."
+        }
 
-    print("\n2. Berechne dynamische Priorität & Schadensprognose mit Wetterdaten ...")
-    # 3. Erweiterte Priorisierung berechnen
+    # 4. Erweiterte Priorisierung (inkl. Wetterfaktor & Transparenz-Breakdown)
     priority_data = calculate_advanced_priority(
         sub_data=sub_data,
         days_waiting=days_waiting,
         is_main_road=is_main_road,
-        citizen_urgency=citizen_urgency
+        citizen_urgency=citizen_urgency,
+        location_str=location
     )
 
-    # 4. Schadensprognose inklusive Wetterfaktor berechnen (mit Übergabe des Standorts)
+    # 5. Prognose zur Schadensentwicklung berechnen
     prognosis_data = calculate_prognosis(
         category=category,
         subcategory=subcategory,
@@ -54,28 +59,24 @@ def process_report(image_path, description, location, district="Bezirk_Mitte", i
         location_str=location
     )
 
-    return {
+    # Zeitstempel für den Bericht
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    # Finales Datenpaket schnüren
+    report_payload = {
+        "success": True,
+        "timestamp": timestamp,
         "location": location,
-        "description": description,
         "district": district,
         "is_main_road": is_main_road,
+        "description": description,
         "category_data": cat_result,
         "sub_data": sub_data,
         "priority_data": priority_data,
         "prognosis_data": prognosis_data
     }
 
-if __name__ == "__main__":
-    image_path = input("Bildpfad: ")
-    description = input("Schadensbeschreibung: ")
-    location = input("Standort (z.B. lat,lon oder Adresse): ")
-    district = input("Bezirk (z.B. Bezirk_Mitte): ") or "Bezirk_Mitte"
-    is_main_road = input("Ist Hauptstraße? (j/n): ").lower() == 'j'
-    citizen_urgency = int(input("Bürger-Dringlichkeit (1-5): "))
+    # 6. Direkt in der Datenbank abspeichern
+    save_report(report_payload)
 
-    result = process_report(image_path, description, location, district, is_main_road, citizen_urgency)
-
-    print("\n--- PIPELINE ERGEBNIS ---")
-    print("Klassifizierung:", result.get("category_data"))
-    print("Priorität:", result.get("priority_data"))
-    print("Prognose:", result.get("prognosis_data"))
+    return report_payload

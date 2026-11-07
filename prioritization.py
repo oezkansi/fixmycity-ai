@@ -1,38 +1,47 @@
-def calculate_advanced_priority(sub_data, days_waiting=0, is_main_road=False, citizen_urgency=3, weather_factor=1.0):
+# prioritization.py
+from weather_utils import get_weather_factor
+
+def calculate_advanced_priority(sub_data, days_waiting, is_main_road, citizen_urgency, location_str=""):
     """
-    Berechnet die Priorität basierend auf Sicherheitsrisiko, Verschlechterungsrate,
-    Wartezeit, Infrastruktur (Hauptstraße) und Bürgerbewertung.
+    Berechnet den erweiterten Prioritätsscore für einen Schadensbericht.
+    Berücksichtigt Basis-Schweregrad, Hauptstraßen-Status, Bürger-Dringlichkeit,
+    Wartezeit (Tage) und den aktuellen Wetterfaktor. Liefert ein 
+    transparentes Breakdown für den Berechnungs-Report zurück.
     """
-    safety = sub_data.get("safety", 30)                # Wert von 0 bis 100
-    deterioration = sub_data.get("deterioration_rate", 0.5) # Wie schnell es schlimmer wird
-    weather_sens = sub_data.get("weather_sensitivity", 0.0)  # Wetteranfälligkeit
-    requires_review = sub_data.get("review", False)
+    # Basis-Schweregrad (Skala 1-5, Fallback auf 3)
+    base_severity = sub_data.get("base_severity", 3) if isinstance(sub_data, dict) else 3
     
-    # 1. Dynamischer Alterungs- und Wetterfaktor (Prognose-Komponente)
-    # Je länger unbehandelt und je höher die Verschlechterungsrate, desto mehr steigt der Score
-    aging_impact = (deterioration + (weather_sens * weather_factor)) * days_waiting
+    # Wetterfaktor abrufen (z.B. Erhöhung bei Frost oder starkem Regen für Straßenschäden)
+    weather_multiplier = get_weather_factor(location_str) if location_str else 1.0
     
-    # 2. Infrastruktur-Bonus (Hauptstraßen werden höher gewichtet wegen Verkehrsaufkommen)
-    road_bonus = 20 if is_main_road else 0
+    # Gewichtungsfaktoren und Boni
+    road_bonus = 1.5 if is_main_road else 1.0
+    urgency_weight = float(citizen_urgency) * 1.2
+    waiting_weight = float(days_waiting) * 0.5
     
-    # 3. Gesamt-Score-Berechnung
-    # - Sicherheit macht 40% des Basiswerts aus
-    # - Die zeitliche Verschlechterung (aging_impact) treibt den Score nach oben
-    # - Bürger-Dringlichkeit (1-5) fließt gewichtet ein
-    base_score = (safety * 0.4) + (citizen_urgency * 5) + road_bonus
-    total_score = base_score + (aging_impact * 2.5)
+    # Textliche Einordnung des Wetterfaktors für den Transparenz-Report
+    weather_note = "Normaler Einfluss"
+    if weather_multiplier > 1.2:
+        weather_note = "Erhöht durch akute Wetterbedingungen (Regen/Frost)"
+    elif weather_multiplier < 1.0:
+        weather_note = "Reduziert durch günstige Wetterbedingungen"
+
+    # Berechnung des finalen Prioritätsscores
+    raw_score = (base_severity * 10.0 * road_bonus) + urgency_weight + waiting_weight
+    final_score = raw_score * weather_multiplier
     
-    # 4. Schwellenwerte für die Zuweisung
-    if requires_review or total_score >= 75:
-        priority = "P1 - Critical"
-    elif total_score >= 45:
-        priority = "P2 - High"
-    else:
-        priority = "P3 - Normal"
-        
+    # Transparenz-Breakdown für die Nachvollziehbarkeit im Bericht
+    breakdown = {
+        "base_severity": base_severity,
+        "road_bonus": road_bonus,
+        "urgency_weight": round(urgency_weight, 2),
+        "waiting_weight": round(waiting_weight, 2),
+        "weather_multiplier": weather_multiplier,
+        "weather_note": weather_note,
+        "final_score": round(final_score, 2)
+    }
+    
     return {
-        "score": round(total_score, 1),
-        "priority": priority,
-        "aging_impact": round(aging_impact, 1),
-        "requires_review": requires_review
+        "score": round(final_score, 2),
+        "breakdown": breakdown
     }
