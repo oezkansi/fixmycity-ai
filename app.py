@@ -46,10 +46,7 @@ description = st.text_area(
 
 st.subheader("📍 Standort des Schadens")
 
-location_method = st.radio(
-    "Wie möchtest du den Standort angeben?",
-    ["Automatisch erkennen", "Manuell eingeben"]
-)
+location_method = "Automatisch erkennen"
 
 if location_method == "Automatisch erkennen":
     st.write("Klicke auf den Button und erlaube den Standortzugriff.")
@@ -66,13 +63,9 @@ if location_method == "Automatisch erkennen":
         st.map([{"lat": latitude, "lon": longitude}])
     else:
         location = ""
-        st.info("Bitte Standort freigeben oder manuell eingeben.")
+        st.warning("⚠️ Standort konnte nicht erkannt werden. Bitte erlaube den Standortzugriff.")
 
-else:
-    location = st.text_input(
-        "Wo befindet sich der Schaden?",
-        placeholder="z. B. Pforzheim, Bahnhofstraße"
-    )
+
 
 
 citizen_urgency = st.slider(
