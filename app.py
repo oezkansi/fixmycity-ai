@@ -135,7 +135,7 @@ if st.button("Schadensmeldung absenden", type="primary"):
             # AI priority is intentionally not shown to citizens.
             # Later, the result will be stored for the admin dashboard.
 
-        except Exception:
-            st.error("Die Analyse ist fehlgeschlagen. Bitte erneut versuchen.")
+        except Exception as e:
+            st.error(f"Fehler bei der Analyse: {e}")
         finally:
             Path(image_path).unlink(missing_ok=True)
