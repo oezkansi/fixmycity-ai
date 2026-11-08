@@ -5,6 +5,7 @@ import pandas as pd
 import streamlit as st
 
 import store
+from existing_duplicates import find_existing_duplicates
 from ui_theme import apply_theme, get_session_id, page_header, parse_location, prio_chip, status_chip
 
 apply_theme(wide=True)
@@ -40,6 +41,7 @@ st.markdown(
 )
 
 reports = store.list_reports()
+duplicate_groups = find_existing_duplicates(reports)
 
 
 def count(pred):
@@ -68,6 +70,45 @@ if not reports:
     st.info("Noch keine Meldungen eingegangen. Sobald Bürger Meldungen senden, erscheinen sie hier.")
     st.page_link("home.py", label="← Zur Startseite")
     st.stop()
+
+
+# --- Mögliche Duplikate -----------------------------------
+if duplicate_groups:
+    st.markdown(
+        '<div class="fmc-step">Mögliche Duplikate</div>',
+        unsafe_allow_html=True,
+    )
+
+    st.warning(
+        f"{len(duplicate_groups)} mögliche "
+        "Duplikatgruppen erkannt."
+    )
+
+    for group in duplicate_groups:
+        ids = [report["id"] for report in group["reports"]]
+
+        with st.expander(
+            f"Schadensfall – Meldungen {', '.join(map(str, ids))}"
+        ):
+            st.write(
+                "Diese Meldungen könnten denselben "
+                "Schaden betreffen."
+            )
+
+            for match in group["matches"]:
+                st.write(
+                    f"Meldung {match['report_1']} und "
+                    f"{match['report_2']}: "
+                    f"Entfernung {match['distance']} m, "
+                    f"Textähnlichkeit {match['text_similarity']} %"
+                )
+
+            st.caption(
+                "Die Meldungen bleiben einzeln gespeichert. "
+                "Eine Zusammenführung muss durch die "
+                "Verwaltung geprüft werden."
+            )
+
 
 if open_critical:
     plural = "kritische Meldung wartet" if open_critical == 1 else "kritische Meldungen warten"

@@ -25,7 +25,7 @@ if st.button("Neues Problem melden", type="primary", width="stretch"):
     st.switch_page("report.py")
 
 st.markdown('<div class="fmc-h2">Frühere Meldungen</div>', unsafe_allow_html=True)
-reports = store.list_reports(session_id=sid)
+reports = store.list_reports()
 
 if not reports:
     st.markdown(

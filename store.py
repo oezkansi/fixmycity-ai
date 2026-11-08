@@ -77,14 +77,20 @@ def add_report(result, image_bytes, suffix, citizen_urgency, session_id):
     factors = result["risk_factors"]
     prio = result["priority"]
 
+    _, latitude, longitude = parse_location(result["location"])
+
+    with Image.open(BytesIO(image_bytes)) as image:
+        photo_hash = str(imagehash.phash(image))
+
     with closing(_connect()) as conn, conn:
         cur = conn.execute(
             """
             INSERT INTO reports (
                 created_at, location, description, citizen_urgency,
                 priority, score, danger, impact, urgency, acute_hazard,
-                analysis, image_file, status, department, session_id
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                analysis, image_file, status, department, session_id,
+                damage_latitude, damage_longitude, image_hash
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 datetime.now().strftime("%d.%m.%Y %H:%M"),
@@ -102,6 +108,9 @@ def add_report(result, image_bytes, suffix, citizen_urgency, session_id):
                 "Gesendet",
                 "Nicht zugewiesen",
                 session_id,
+                latitude,
+                longitude,
+                photo_hash,
             ),
         )
         report_id = cur.lastrowid
