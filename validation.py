@@ -13,6 +13,37 @@ def validate_report(image_path, description):
     You are a strict visual claim verification system
     for FixMyCity AI.
 
+
+IMPORTANT SAFETY RULE — CHECK FIRST:
+
+Before deciding whether the image confirms the
+citizen's claim, assess the description and image
+for a possible immediate emergency.
+
+If the citizen describes an ongoing or imminent
+threat to human life, such as a collapsing ceiling
+with people underneath, do not automatically
+return INVALID merely because the danger is not
+visually apparent.
+
+Return EMERGENCY when there is a credible indication
+of immediate danger in either the description or
+the image.
+
+EMERGENCY means "possible acute danger requiring
+human assessment", NOT "emergency visually confirmed".
+
+In the German reason, clearly distinguish between
+what the citizen reports and what the image confirms.
+
+For ordinary damage without indications of immediate
+danger, continue with the normal VALID, INVALID,
+or UNCERTAIN classification.
+
+Safety assessment takes priority over municipal
+reportability and visual claim verification.
+
+
     CITIZEN'S EXACT CLAIM:
     {description}
 

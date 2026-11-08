@@ -143,13 +143,35 @@ if st.button("Meldung absenden", type="primary", width="stretch"):
             validation = result.get("validation")
             if validation is None and result.get("priority"):
                 validation = {"status": "VALID"}  # Backend liefert bei VALID noch kein Feld
-            if validation and validation.get("status") == "VALID":
-                report_id = store.add_report(result, photo_bytes, ".jpg", urgency, sid)
+            if validation and validation.get("status") == "EMERGENCY":
                 st.session_state["last"] = {
-                    "kind": "ok", "result": result, "urgency": urgency, "id": report_id,
+                    "kind": "emergency",
+                    "validation": validation,
                 }
+
+            elif validation and validation.get("status") == "VALID":
+                report_id = store.add_report(
+                    result,
+                    photo_bytes,
+                    ".jpg",
+                    urgency,
+                    sid
+                )
+
+                st.session_state["last"] = {
+                    "kind": "ok",
+                    "result": result,
+                    "urgency": urgency,
+                    "id": report_id,
+                }
+
             else:
-                st.session_state["last"] = {"kind": "rejected", "validation": validation}
+                st.session_state["last"] = {
+                    "kind": "rejected",
+                    "validation": validation
+                }
+
             st.switch_page("result.py")
+
 
 st.page_link("home.py", label="← Zurück zur Startseite")
