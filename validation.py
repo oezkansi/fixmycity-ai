@@ -92,7 +92,7 @@ def validate_report(image_path, description):
        proof that the claimed defect exists.
 
     Return a JSON object with exactly:
-    status: VALID, INVALID, or UNCERTAIN
+    status: VALID, INVALID, UNCERTAIN, or EMERGENCY
     reason: explanation in German
     detected_problem: what is actually visible
 
