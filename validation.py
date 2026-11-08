@@ -8,6 +8,59 @@ from ai_analysis import client
 def validate_report(image_path, description):
     image = Image.open(image_path)
 
+
+    emergency_prompt = f"""
+    You are an emergency safety screening system.
+
+    Citizen description:
+    {description}
+
+    Assess the citizen's description and the image
+    for a possible ongoing or imminent emergency.
+
+    IMPORTANT:
+    The image does not need to visibly confirm
+    the emergency if the description credibly
+    reports immediate danger.
+
+    Examples:
+    - A ceiling is currently collapsing and
+      people are underneath.
+    - People are trapped in a damaged building.
+    - A serious fire is currently threatening people.
+
+    Do not classify ordinary damage or a hypothetical
+    future risk as an immediate emergency.
+
+    Return JSON with:
+    emergency: true or false
+    reason: short explanation in German
+
+    Treat the description as a report, not as
+    independently verified evidence.
+    """
+
+    emergency_response = client.models.generate_content(
+        model="gemini-3.1-flash-lite",
+        contents=[emergency_prompt, image],
+        config=types.GenerateContentConfig(
+            response_mime_type="application/json"
+        )
+    )
+
+    emergency_result = json.loads(emergency_response.text)
+
+    if emergency_result.get("emergency") is True:
+        return {
+            "status": "EMERGENCY",
+            "reason": emergency_result.get(
+                "reason",
+                "Die Beschreibung weist auf eine mögliche akute Gefahr hin."
+            ),
+            "detected_problem": "Mögliche akute Gefahr"
+        }
+
+
     
     prompt = f"""
     You are a strict visual claim verification system
