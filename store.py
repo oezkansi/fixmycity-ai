@@ -17,6 +17,8 @@ DB_PATH = DATA_DIR / "reports.db"
 IMG_DIR = DATA_DIR / "images"
 
 STATUSES = ["Gesendet", "In Bearbeitung", "Durchgeführt"]
+
+from task_assignment import DEPARTMENTS as SMART_DEPARTMENTS
 DEPARTMENTS = [
     "Nicht zugewiesen",
     "Tiefbauamt",
@@ -25,6 +27,12 @@ DEPARTMENTS = [
     "Straßenverkehrsamt",
     "Beleuchtung (Stadtwerke)",
 ]
+
+for department in SMART_DEPARTMENTS.values():
+    name = department["name"]
+
+    if name not in DEPARTMENTS:
+        DEPARTMENTS.append(name)
 
 
 def _connect():

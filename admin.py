@@ -6,6 +6,8 @@ import streamlit as st
 
 import store
 from existing_duplicates import find_existing_duplicates
+from smart_delegation import build_smart_queue
+from task_assignment import recommend_task
 from ui_theme import apply_theme, get_session_id, page_header, parse_location, prio_chip, status_chip
 
 apply_theme(wide=True)
@@ -43,6 +45,10 @@ st.markdown(
 reports = store.list_reports()
 duplicate_groups = find_existing_duplicates(reports)
 
+smart_queue = build_smart_queue(reports)
+
+smart_queue = build_smart_queue(reports)
+
 
 def count(pred):
     return sum(1 for r in reports if pred(r))
@@ -71,7 +77,130 @@ if not reports:
     st.page_link("home.py", label="← Zur Startseite")
     st.stop()
 
+# --- Smart Delegation ------------------------------------
+st.markdown(
+    '<div class="fmc-step">Smart Delegation</div>',
+    unsafe_allow_html=True,
+)
 
+st.caption(
+    "Automatische Abteilungsempfehlungen für neue Meldungen. "
+    "Die endgültige Zuweisung erfolgt durch die Verwaltung."
+)
+
+for report in reports:
+    if report["status"] != "Gesendet":
+        continue
+
+    recommendation = recommend_task(report)
+    department = recommendation.get("department")
+
+    if isinstance(department, dict):
+        department_name = department["name"]
+    else:
+        department_name = "Manuelle Prüfung"
+
+    with st.expander(
+        f"Meldung Nr. {report['id']} – {department_name}"
+    ):
+        st.write("**Beschreibung:**", report["description"])
+        st.write("**Priorität:**", report["priority"])
+        st.write("**Empfohlene Abteilung:**", department_name)
+        st.write("**Begründung:**", recommendation["reason"])
+
+        st.info(
+            "Dies ist eine automatische Empfehlung. "
+            "Es wurde noch keine Zuweisung vorgenommen."
+        )
+
+    # --- Department Capacity ----------------------------------
+st.markdown(
+    '<div class="fmc-step">Department Capacity</div>',
+    unsafe_allow_html=True,
+)
+
+if smart_queue["departments"]:
+    for department, capacity in smart_queue["departments"].items():
+        with st.expander(f"🏢 {department}"):
+            col1, col2, col3 = st.columns(3)
+
+            col1.metric(
+                "Maximale Kapazität",
+                capacity["maximum_capacity"]
+            )
+
+            col2.metric(
+                "Belegt",
+                capacity["occupied_capacity"]
+            )
+
+            col3.metric(
+                "Freie Plätze",
+                capacity["available_capacity"]
+            )
+else:
+    st.info("Keine Abteilungen mit offenen Meldungen vorhanden.")
+
+# --- Intelligent Waiting List -----------------------------
+st.markdown(
+    '<div class="fmc-step">Intelligent Waiting List</div>',
+    unsafe_allow_html=True,
+)
+
+waiting_list = smart_queue["waiting_list"]
+
+if waiting_list:
+    st.warning(
+        f"{len(waiting_list)} Meldung(en) warten "
+        "auf freie Kapazitäten."
+    )
+
+    for item in waiting_list:
+        with st.expander(
+            f"Meldung Nr. {item['case_id']} – {item['department']}"
+        ):
+            st.write("**Beschreibung:**", item["description"])
+            st.write("**Priorität:**", item["priority"])
+            st.write("**Abteilung:**", item["department"])
+            st.write("**Wartezeit:**", item["waiting_days"], "Tage")
+            st.write("**Queue Score:**", item["queue_score"])
+
+            if item["delegation_status"] == "ESCALATION_REQUIRED":
+                st.error("Kritischer Fall – Eskalation erforderlich!")
+else:
+    st.success("Aktuell befinden sich keine Meldungen auf der Warteliste.")
+
+# --- Overload Detection & Escalations ---------------------
+st.markdown(
+    '<div class="fmc-step">Escalations</div>',
+    unsafe_allow_html=True,
+)
+
+escalations = smart_queue["escalations"]
+
+if escalations:
+    st.error(
+        f"⚠️ {len(escalations)} kritische Meldung(en) "
+        "benötigen eine sofortige Prüfung!"
+    )
+
+    for item in escalations:
+        with st.expander(
+            f"🔴 P1 – Meldung Nr. {item['case_id']}"
+        ):
+            st.write("**Beschreibung:**", item["description"])
+            st.write("**Abteilung:**", item["department"])
+            st.write("**Priorität:**", item["priority"])
+            st.write("**Wartezeit:**", item["waiting_days"], "Tage")
+
+            st.warning(
+                "Diese kritische Meldung konnte wegen "
+                "fehlender Kapazität nicht eingeplant werden. "
+                "Eine manuelle Entscheidung ist erforderlich."
+            )
+else:
+    st.success("Keine kapazitätsbedingten Eskalationen vorhanden.")
+    
 # --- Mögliche Duplikate -----------------------------------
 if duplicate_groups:
     st.markdown(

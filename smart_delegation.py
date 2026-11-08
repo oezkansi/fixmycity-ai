@@ -26,8 +26,24 @@ def priority_rank(priority):
 
 
 def waiting_days(created_at):
+    if not created_at:
+        return 0
+
+    text = str(created_at).strip()
+
+    for date_format in (
+        "%d.%m.%Y %H:%M",
+        "%d.%m.%Y %H:%M:%S",
+        "%Y-%m-%d %H:%M:%S",
+    ):
+        try:
+            created = datetime.strptime(text, date_format)
+            return max(0, (datetime.now() - created).days)
+        except ValueError:
+            continue
+
     try:
-        created = datetime.fromisoformat(str(created_at))
+        created = datetime.fromisoformat(text)
         return max(0, (datetime.now() - created).days)
     except (ValueError, TypeError):
         return 0
@@ -123,6 +139,15 @@ def build_smart_queue(
         )
 
         occupied = int(active_tasks.get(department, 0))
+
+        running_tasks = sum(
+            1
+            for item in items
+            if item["status"] == "In Bearbeitung"
+        )
+
+        occupied = max(occupied, running_tasks)
+
         free_slots = max(0, maximum - occupied)
 
         items.sort(
