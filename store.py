@@ -6,6 +6,11 @@ import sqlite3
 from contextlib import closing
 from datetime import datetime
 from pathlib import Path
+from io import BytesIO
+from PIL import Image
+import imagehash
+
+from ui_theme import parse_location
 
 DATA_DIR = Path(__file__).parent / "ui_data"
 DB_PATH = DATA_DIR / "reports.db"
@@ -53,6 +58,17 @@ def _connect():
     columns = [row["name"] for row in conn.execute("PRAGMA table_info(reports)")]
     if "session_id" not in columns:
         conn.execute("ALTER TABLE reports ADD COLUMN session_id TEXT")
+
+    for name, column_type in [
+        ("damage_latitude", "REAL"),
+        ("damage_longitude", "REAL"),
+        ("image_hash", "TEXT"),
+    ]:
+        if name not in columns:
+            conn.execute(
+                f"ALTER TABLE reports ADD COLUMN {name} {column_type}"
+            )
+
     return conn
 
 
