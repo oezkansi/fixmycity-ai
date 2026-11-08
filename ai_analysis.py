@@ -3,17 +3,16 @@ from pathlib import Path
 from dotenv import load_dotenv
 from google import genai
 from PIL import Image
-import os
-from pathlib import Path
-from dotenv import load_dotenv
-from google import genai
-from PIL import Image
 
-load_dotenv()
+# Lädt die .env-Datei direkt aus dem Projektverzeichnis
+env_path = Path(__file__).parent / ".env"
+load_dotenv(dotenv_path=env_path)
 
-client = genai.Client(
-    api_key=os.getenv("GEMINI_API_KEY")
-)
+api_key = os.getenv("GEMINI_API_KEY")
+
+client = genai.Client(api_key=api_key)
+
+def analyze_report(image_path, description):
 
 def analyze_report(image_path, description):
     image = Image.open(image_path)
