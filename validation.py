@@ -201,7 +201,7 @@ the image shows a genuine, reportable public issue.
         raise ValueError("Ungültige KI-Antwort.")
 
     if result.get("status") not in {
-        "VALID", "INVALID", "UNCERTAIN"
+    "VALID", "INVALID", "UNCERTAIN", "EMERGENCY"
     }:
         raise ValueError("Unbekannter Validierungsstatus.")
 
